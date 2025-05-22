@@ -23,7 +23,7 @@ class Music(commands.Cog):
             host="localhost",
             port=2333,
             password="youshallnotpass"
-        )
+    )
 
     @app_commands.command(name="play", description="Spiele einen Song über YouTube")
     @app_commands.describe(search="Songtitel oder Link")
@@ -68,8 +68,6 @@ class Music(commands.Cog):
         if vc:
             await vc.disconnect()
             await interaction.response.send_message("⏹ Gestoppt")
-
-bot.tree.copy_global_to(guild=discord.Object(id=DEIN_SERVER_ID))  # ❗ Ersetze DEIN_SERVER_ID mit deiner Guild-ID
 
 bot.add_cog(Music(bot))
 bot.run(os.getenv("DISCORD_TOKEN"))
