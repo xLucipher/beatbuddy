@@ -9,23 +9,44 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-class MusicBot(wavelink.Client):
-    async def on_ready(self):
-        print(f"✅ Bot ist bereit als {bot.user}")
-
-    async def on_wavelink_node_ready(self, node: wavelink.Node):
-        print(f"🎵 Lavalink Node verbunden: {node.id}")
-
-# Starte den Wavelink-Client
 @bot.event
 async def on_ready():
-    if not hasattr(bot, "wavelink"):
-        bot.wavelink = MusicBot()
-        await bot.wavelink.initiate(
-            client=bot,
-            nodes=[
-                wavelink.Node(uri='http://localhost:2333', password='youshallnotpass')
-            ]
-        )
+    print(f"✅ Bot ist bereit als {bot.user}")
+    # Node starten (Standard-Lavalink-Einstellungen)
+    await wavelink.NodePool.create_node(
+        bot=bot,
+        host='localhost',
+        port=2333,
+        password='youshallnotpass',
+        https=False
+    )
 
-bot.run(os.environ["DISCORD_TOKEN"])
+@bot.command()
+async def join(ctx):
+    if not ctx.author.voice:
+        return await ctx.send("⚠ Du bist in keinem Voice-Channel.")
+    channel = ctx.author.voice.channel
+    await channel.connect(cls=wavelink.Player)
+
+@bot.command()
+async def play(ctx, *, search: str):
+    player: wavelink.Player = ctx.voice_client
+    if not player:
+        return await ctx.send("⚠ Bot ist in keinem Voice-Channel.")
+
+    track = await wavelink.YouTubeTrack.search(search, return_first=True)
+    await player.play(track)
+    await ctx.send(f"🎶 Spiele: **{track.title}**")
+
+@bot.command()
+async def stop(ctx):
+    player: wavelink.Player = ctx.voice_client
+    if player:
+        await player.stop()
+        await ctx.send("⏹ Wiedergabe gestoppt.")
+
+@bot.command()
+async def leave(ctx):
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("👋 Verlassen.")
