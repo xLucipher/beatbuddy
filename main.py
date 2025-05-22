@@ -148,7 +148,7 @@ async def play(interaction: discord.Interaction, query: str):
     if not vc.is_playing() and not vc.is_paused():
         volume = volumes.get(guild_id, 0.5)
         ffmpeg_opts = "-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls,crypto,pipe"
-        source = FFmpegPCMAudio(url, executable="./ffmpeg", options=ffmpeg_opts)
+        source = FFmpegPCMAudio(url, options='-vn -b:a 192k')
         source = discord.PCMVolumeTransformer(source, volume)
         vc.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(interaction, vc), bot.loop))
 
@@ -177,7 +177,7 @@ async def play_next(interaction, vc):
     url, title = queues[guild_id].pop(0)
     volume = volumes.get(guild_id, 0.5)
     ffmpeg_opts = "-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -protocol_whitelist file,http,https,tcp,tls,crypto,pipe"
-    source = FFmpegPCMAudio(url, executable="./ffmpeg", options=ffmpeg_opts)
+    source = FFmpegPCMAudio(url, options='-vn -b:a 192k')
     source = discord.PCMVolumeTransformer(source, volume)
     vc.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(interaction, vc), bot.loop))
 
