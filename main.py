@@ -118,7 +118,7 @@ class Music(commands.Cog):
             await interaction.response.send_message(f"📃 Warteschlange:\n{message}")
 
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.Track, reason):
+    async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.tracks, reason):
         q = self.get_queue(player.guild.id)
         if q:
             next_track = q.pop(0)
