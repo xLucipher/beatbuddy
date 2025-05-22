@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import wavelink
-import asyncio
 import os
 
 intents = discord.Intents.default()
@@ -9,66 +9,88 @@ intents.message_content = True
 intents.guilds = True
 intents.voice_states = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=commands.when_mentioned, intents=intents)
 
 class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print(f"✅ Bot ist online als {self.bot.user}")
-        await wavelink.NodePool.create_node(
-            bot=self.bot,
-            host='localhost',
-            port=2333,
-            password='youshallnotpass'
-        )
+    @app_commands.command(name="play", description="Spiele ein Lied ab")
+    @app_commands.describe(query="YouTube URL oder Suchbegriff")
+    async def play(self, interaction: discord.Interaction, query: str):
+        await interaction.response.defer()
 
-    @commands.command(name="join")
-    async def join(self, ctx: commands.Context):
-        if not ctx.author.voice:
-            return await ctx.send("❌ Du bist nicht in einem Voice-Channel.")
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            await interaction.followup.send("❌ Du musst in einem Voice-Channel sein.")
+            return
 
-        channel = ctx.author.voice.channel
-        await channel.connect(cls=wavelink.Player)
-
-    @commands.command(name="play")
-    async def play(self, ctx: commands.Context, *, search: str):
-        vc: wavelink.Player = ctx.voice_client
-
+        vc: wavelink.Player = interaction.guild.voice_client
         if not vc:
-            await ctx.invoke(self.join)
+            vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
 
-        vc: wavelink.Player = ctx.voice_client
-        track = await wavelink.YouTubeTrack.search(search, return_first=True)
+        track = None
+        try:
+            tracks = await wavelink.YouTubeTrack.search(query, return_first=True)
+            track = tracks
+        except Exception as e:
+            await interaction.followup.send("❌ Fehler beim Suchen des Tracks.")
+            print(e)
+            return
+
         await vc.play(track)
-        await ctx.send(f"🎶 Now Playing: **{track.title}**")
+        await interaction.followup.send(f"▶️ **Jetzt spielt:** `{track.title}`")
 
-    @commands.command(name="pause")
-    async def pause(self, ctx: commands.Context):
-        vc: wavelink.Player = ctx.voice_client
-        await vc.pause()
-        await ctx.send("⏸️ Pausiert")
+    @app_commands.command(name="stop", description="Stoppt die Wiedergabe und verlässt den Channel")
+    async def stop(self, interaction: discord.Interaction):
+        vc: wavelink.Player = interaction.guild.voice_client
+        if vc:
+            await vc.disconnect()
+            await interaction.response.send_message("⏹️ Wiedergabe gestoppt und Voice-Channel verlassen.")
+        else:
+            await interaction.response.send_message("❌ Ich bin in keinem Voice-Channel.")
 
-    @commands.command(name="resume")
-    async def resume(self, ctx: commands.Context):
-        vc: wavelink.Player = ctx.voice_client
-        await vc.resume()
-        await ctx.send("▶ Fortgesetzt")
+    @app_commands.command(name="pause", description="Pausiert die Wiedergabe")
+    async def pause(self, interaction: discord.Interaction):
+        vc: wavelink.Player = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            await vc.pause()
+            await interaction.response.send_message("⏸️ Wiedergabe pausiert.")
+        else:
+            await interaction.response.send_message("❌ Ich spiele gerade nichts.")
 
-    @commands.command(name="stop")
-    async def stop(self, ctx: commands.Context):
-        vc: wavelink.Player = ctx.voice_client
-        await vc.stop()
-        await vc.disconnect()
-        await ctx.send("⏹ Gestoppt")
+    @app_commands.command(name="resume", description="Setzt die Wiedergabe fort")
+    async def resume(self, interaction: discord.Interaction):
+        vc: wavelink.Player = interaction.guild.voice_client
+        if vc and vc.is_paused():
+            await vc.resume()
+            await interaction.response.send_message("▶️ Wiedergabe fortgesetzt.")
+        else:
+            await interaction.response.send_message("❌ Nichts ist pausiert.")
 
-    @commands.command(name="skip")
-    async def skip(self, ctx: commands.Context):
-        vc: wavelink.Player = ctx.voice_client
-        await vc.stop()
-        await ctx.send("⏭ Übersprungen")
+    @app_commands.command(name="skip", description="Überspringt das aktuelle Lied")
+    async def skip(self, interaction: discord.Interaction):
+        vc: wavelink.Player = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            await vc.stop()
+            await interaction.response.send_message("⏭️ Lied übersprungen.")
+        else:
+            await interaction.response.send_message("❌ Ich spiele gerade nichts.")
 
-bot.add_cog(Music(bot))
+@bot.event
+async def on_ready():
+    await wavelink.NodePool.create_node(bot=bot, host='localhost', port=2333, password='youshallnotpass')
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Slash-Commands synchronisiert: {[cmd.name for cmd in synced]}")
+    except Exception as e:
+        print(f"❌ Fehler beim Synchronisieren: {e}")
+
+    print(f"🤖 Bot ist online als {bot.user}")
+
+bot.tree.add_command(Music(bot).play)
+bot.tree.add_command(Music(bot).stop)
+bot.tree.add_command(Music(bot).pause)
+bot.tree.add_command(Music(bot).resume)
+bot.tree.add_command(Music(bot).skip)
+
 bot.run(os.environ["DISCORD_TOKEN"])
