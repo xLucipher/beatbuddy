@@ -116,13 +116,12 @@ async def play(interaction: discord.Interaction, query: str):
         vc = await interaction.user.voice.channel.connect()
 
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[acodec=opus]/bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1',
-        'cookiefile': 'cookies.txt',
-        'geo_bypass': True,
-        'source_address': '0.0.0.0'
+        'http_headers': {'User-Agent': 'Mozilla/5.0'},
+        'cookiefile': 'cookies.txt'
     }
 
     try:
