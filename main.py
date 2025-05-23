@@ -27,7 +27,7 @@ async def setup_hook(self):  # ← self muss rein
     await self.tree.sync(guild=GUILD_ID)
     print("✅ Slash-Commands synchronisiert (guild-basiert)")
 
-bot.setup_hook = setup_hook
+bot.setup_hook = setup_hook.__get__(bot, type(bot))
 
 @bot.event
 async def on_ready():
