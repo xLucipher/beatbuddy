@@ -5,37 +5,36 @@ import wavelink
 import os
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-GUILD_ID = discord.Object(id=1296888604697563238)  # Discord Object für Guild-ID
+GUILD_ID = discord.Object(id=1296888604697563238)
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
 
-# -- Slash-Commands registrieren (global löschen, dann guild-basiert registrieren) --
-async def setup_hook(self):
-    try:
-        # Globale Slash-Commands entfernen
-        global_cmds = await self.tree.fetch_commands()
-        for cmd in global_cmds:
-            await self.tree.remove_command(cmd.name)
-        print("🧹 Alte globale Commands entfernt")
+class BeatBuddy(commands.Bot):
+    async def setup_hook(self):
+        try:
+            # Entferne alte globale Commands
+            global_cmds = await self.tree.fetch_commands()
+            for cmd in global_cmds:
+                await self.tree.remove_command(cmd.name)
 
-        # Guild-Slash-Commands entfernen
-        guild_cmds = await self.tree.fetch_commands(guild=GUILD_ID)
-        for cmd in guild_cmds:
-            await self.tree.remove_command(cmd.name, guild=GUILD_ID)
-        print("🧹 Alte Guild-Commands entfernt")
+            # Entferne alte Guild-Commands
+            guild_cmds = await self.tree.fetch_commands(guild=GUILD_ID)
+            for cmd in guild_cmds:
+                await self.tree.remove_command(cmd.name, guild=GUILD_ID)
 
-    except Exception as e:
-        print(f"⚠️ Fehler beim Entfernen: {e}")
+            print("🧹 Alte Commands entfernt")
+        except Exception as e:
+            print(f"⚠️ Fehler beim Entfernen: {e}")
 
-    await self.tree.sync()
-    await self.tree.sync(guild=GUILD_ID)
-    print("✅ Slash-Commands synchronisiert")
+        # Registrieren
+        await self.tree.sync(guild=GUILD_ID)
+        print("✅ Slash-Commands synchronisiert")
 
-bot.setup_hook = setup_hook
+bot = BeatBuddy(command_prefix="!", intents=intents)
+
 
 @bot.event
 async def on_ready():
@@ -46,13 +45,13 @@ async def on_ready():
     )
     print("🎵 Lavalink verbunden")
 
-    # Debug: Auflisten aller Slash-Commands
+    # Zeige registrierte Slash-Befehle
     cmds = await bot.tree.fetch_commands(guild=GUILD_ID)
     print("📋 Registrierte Slash-Commands:")
     for cmd in cmds:
         print(f" - {cmd.name}")
 
-# --- /play ---
+
 @bot.tree.command(name="play", description="Spielt ein Lied von YouTube", guild=GUILD_ID)
 @app_commands.describe(query="Songtitel oder Link")
 async def play(interaction: discord.Interaction, query: str):
@@ -79,10 +78,10 @@ async def play(interaction: discord.Interaction, query: str):
     await vc.play(track)
     await interaction.followup.send(f"🎶 Spiele: `{track.title}`")
 
-# --- /stop ---
+
 @bot.tree.command(name="stop", description="Stoppt die Wiedergabe", guild=GUILD_ID)
 async def stop(interaction: discord.Interaction):
-    player: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
+    player = wavelink.Pool.get_node().get_player(interaction.guild)
 
     if not player:
         await interaction.response.send_message("❌ Kein Player aktiv.", ephemeral=True)
@@ -91,10 +90,10 @@ async def stop(interaction: discord.Interaction):
     await player.disconnect()
     await interaction.response.send_message("⏹️ Wiedergabe gestoppt und getrennt.")
 
-# --- /skip ---
+
 @bot.tree.command(name="skip", description="Überspringt den aktuellen Song", guild=GUILD_ID)
 async def skip(interaction: discord.Interaction):
-    player: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
+    player = wavelink.Pool.get_node().get_player(interaction.guild)
 
     if not player or not player.is_playing():
         await interaction.response.send_message("❌ Nichts läuft gerade.", ephemeral=True)
@@ -102,5 +101,6 @@ async def skip(interaction: discord.Interaction):
 
     await player.stop()
     await interaction.response.send_message("⏭️ Übersprungen.")
+
 
 bot.run(TOKEN)
