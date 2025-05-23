@@ -4,26 +4,34 @@ from discord import app_commands
 import wavelink
 import os
 
-# --- ENV & Guild ---
-TOKEN = os.getenv("DISCORD_TOKEN")  # oder ersetze mit deinem Token direkt als String
-GUILD_ID = 1296888604697563238  # als INT, nicht als discord.Object!
+TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = 1296888604697563238  # Falls du dennoch guild-spezifisch testen willst
 
-# --- Intents ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-# --- Bot Setup ---
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# --- setup_hook: Slash-Commands syncen ---
+
+# -- Slash-Commands registrieren (global) --
 async def setup_hook():
-    await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-    print("✅ Slash-Commands synchronisiert")
+    # OPTIONAL: Alte GUILD-Slash-Commands löschen (nur bei Problemen)
+    try:
+        guild = discord.Object(id=GUILD_ID)
+        cmds = await bot.tree.fetch_commands(guild=guild)
+        for cmd in cmds:
+            await bot.tree.remove_command(cmd.name, guild=guild)
+        print("🧹 Alte Guild-Commands entfernt")
+    except Exception as e:
+        print(f"⚠️ Fehler beim Löschen der alten Guild-Commands: {e}")
+
+    await bot.tree.sync()  # GLOBAL Sync
+    print("✅ Slash-Commands synchronisiert (global)")
 
 bot.setup_hook = setup_hook
 
-# --- on_ready: Lavalink verbinden ---
+
 @bot.event
 async def on_ready():
     print(f"✅ Bot angemeldet als {bot.user}")
@@ -38,8 +46,9 @@ async def on_ready():
     )
     print("🎵 Lavalink verbunden")
 
-# --- /play ---
-@bot.tree.command(name="play", description="Spielt ein Lied von YouTube", guild=discord.Object(id=GUILD_ID))
+
+# --- SLASH COMMANDS OHNE guild= ---
+@bot.tree.command(name="play", description="Spielt ein Lied von YouTube")
 @app_commands.describe(query="Songtitel oder Link")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
@@ -49,7 +58,6 @@ async def play(interaction: discord.Interaction, query: str):
         return
 
     vc: wavelink.Player = await wavelink.Pool.get_node().connect(interaction.user.voice.channel)
-
     tracks = await wavelink.Pool.get_node().get_tracks(query)
     if not tracks:
         await interaction.followup.send("❌ Kein Track gefunden.")
@@ -67,8 +75,8 @@ async def play(interaction: discord.Interaction, query: str):
     embed.set_footer(text=f"Angefordert von {interaction.user.display_name}")
     await interaction.followup.send(embed=embed)
 
-# --- /stop ---
-@bot.tree.command(name="stop", description="Stoppt die Wiedergabe", guild=discord.Object(id=GUILD_ID))
+
+@bot.tree.command(name="stop", description="Stoppt die Wiedergabe")
 async def stop(interaction: discord.Interaction):
     vc: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
     if not vc:
@@ -77,8 +85,8 @@ async def stop(interaction: discord.Interaction):
     await vc.disconnect()
     await interaction.response.send_message("⏹️ Wiedergabe gestoppt und getrennt.")
 
-# --- /skip ---
-@bot.tree.command(name="skip", description="Überspringt den aktuellen Song", guild=discord.Object(id=GUILD_ID))
+
+@bot.tree.command(name="skip", description="Überspringt den aktuellen Song")
 async def skip(interaction: discord.Interaction):
     vc: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
     if not vc or not vc.is_playing():
@@ -87,5 +95,5 @@ async def skip(interaction: discord.Interaction):
     await vc.stop()
     await interaction.response.send_message("⏭️ Übersprungen.")
 
-# --- Start ---
+
 bot.run(TOKEN)
