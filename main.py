@@ -56,9 +56,12 @@ async def play(interaction: discord.Interaction, query: str):
         await interaction.followup.send("❌ Du musst in einem Voice-Channel sein!")
         return
 
-    vc: wavelink.Player = await wavelink.Player.connect(interaction.user.voice.channel, reconnect=False)
-    tracks = await wavelink.Pool.get_node().get_tracks(query)
+    vc: wavelink.Player = await wavelink.Player.connect(
+        channel=interaction.user.voice.channel,
+        reconnect=False
+    )
 
+    tracks = await wavelink.Pool.get_node().get_tracks(query)
     if not tracks:
         await interaction.followup.send("❌ Kein Track gefunden.")
         return
@@ -74,7 +77,6 @@ async def play(interaction: discord.Interaction, query: str):
     embed.add_field(name="Dauer", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
     embed.set_footer(text=f"Angefordert von {interaction.user.display_name}")
     await interaction.followup.send(embed=embed)
-
 
 # --- /stop ---
 @bot.tree.command(name="stop", description="Stoppt die Wiedergabe")
