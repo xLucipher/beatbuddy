@@ -57,7 +57,7 @@ async def play(interaction: discord.Interaction, query: str):
         await interaction.followup.send("❌ Du musst in einem Voice-Channel sein!")
         return
 
-    vc: wavelink.Player = await wavelink.Pool.get_node().connect(interaction.user.voice.channel)
+    vc: wavelink.Player = await wavelink.Player.connect(interaction.user.voice.channel)
     tracks = await wavelink.Pool.get_node().get_tracks(query)
     if not tracks:
         await interaction.followup.send("❌ Kein Track gefunden.")
@@ -78,7 +78,7 @@ async def play(interaction: discord.Interaction, query: str):
 
 @bot.tree.command(name="stop", description="Stoppt die Wiedergabe")
 async def stop(interaction: discord.Interaction):
-    vc: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
+    vc: wavelink.Player = await wavelink.Player.connect(interaction.user.voice.channel)
     if not vc:
         await interaction.response.send_message("❌ Kein Player aktiv.", ephemeral=True)
         return
@@ -88,7 +88,7 @@ async def stop(interaction: discord.Interaction):
 
 @bot.tree.command(name="skip", description="Überspringt den aktuellen Song")
 async def skip(interaction: discord.Interaction):
-    vc: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
+    vc: wavelink.Player = await wavelink.Player.connect(interaction.user.voice.channel)
     if not vc or not vc.is_playing():
         await interaction.response.send_message("❌ Nichts läuft gerade.", ephemeral=True)
         return
