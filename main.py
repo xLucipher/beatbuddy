@@ -58,14 +58,21 @@ async def play(interaction: discord.Interaction, query: str):
 
     vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
 
-    # NEU: Wavelink 3.5 Suche via Playable.search
-    search = await wavelink.Playable.search(query)
+    # Perform the search
+    tracks = await wavelink.Playable.search(query)
 
-    if not search or not search.tracks:
-        await interaction.followup.send("❌ Kein Track gefunden.")
-        return
+    # Handle both SearchResult and raw list
+    if isinstance(tracks, list):
+        if not tracks:
+            await interaction.followup.send("❌ Kein Track gefunden.")
+            return
+        track = tracks[0]
+    else:
+        if not tracks.tracks:
+            await interaction.followup.send("❌ Kein Track gefunden.")
+            return
+        track = tracks.tracks[0]
 
-    track = search.tracks[0]
     await vc.play(track)
 
     embed = discord.Embed(
