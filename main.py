@@ -56,15 +56,16 @@ async def play(interaction: discord.Interaction, query: str):
         await interaction.followup.send("❌ Du musst in einem Voice-Channel sein!")
         return
 
-    # Wavelink 3.5: Discord-VoiceChannel.connect mit Player-Klasse
     vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
 
-    tracks = await wavelink.Pool.get_node().get_tracks(query)
-    if not tracks:
+    # NEU: Wavelink 3.5 Suche via Playable.search
+    search = await wavelink.Playable.search(query)
+
+    if not search or not search.tracks:
         await interaction.followup.send("❌ Kein Track gefunden.")
         return
 
-    track = tracks[0]
+    track = search.tracks[0]
     await vc.play(track)
 
     embed = discord.Embed(
