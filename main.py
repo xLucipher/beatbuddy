@@ -5,7 +5,7 @@ import wavelink
 import os
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-GUILD_ID = 1296888604697563238  # optional, für Debugzwecke
+GUILD_ID = discord.Object(id=1296888604697563238)  # Discord Object für Guild-ID
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -14,19 +14,18 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-# -- Slash-Commands registrieren (global) --
+# -- Slash-Commands registrieren (guild-basiert) --
 async def setup_hook():
     try:
-        guild = discord.Object(id=GUILD_ID)
-        cmds = await bot.tree.fetch_commands(guild=guild)
+        cmds = await bot.tree.fetch_commands(guild=GUILD_ID)
         for cmd in cmds:
-            await bot.tree.remove_command(cmd.name, guild=guild)
+            await bot.tree.remove_command(cmd.name, guild=GUILD_ID)
         print("🧹 Alte Guild-Commands entfernt")
     except Exception as e:
         print(f"⚠️ Fehler beim Löschen der alten Guild-Commands: {e}")
 
-    await bot.tree.sync()
-    print("✅ Slash-Commands synchronisiert (global)")
+    await bot.tree.sync(guild=GUILD_ID)
+    print("✅ Slash-Commands synchronisiert (guild-basiert)")
 
 bot.setup_hook = setup_hook
 
@@ -52,23 +51,19 @@ async def on_ready():
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
-    # Prüfen, ob der Nutzer in einem Voice-Channel ist
     if not interaction.user.voice or not interaction.user.voice.channel:
         await interaction.followup.send("❌ Du musst in einem Voice-Channel sein, um Musik abzuspielen.")
         return
 
-    # Prüfen, ob der Bot bereits verbunden ist
     vc: wavelink.Player = wavelink.Player.connected(interaction.guild)
 
     if not vc:
         vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
     else:
-        # Falls der Bot verbunden ist, prüfen ob er im gleichen Channel ist
         if vc.channel != interaction.user.voice.channel:
             await vc.disconnect()
             vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
 
-    # Track suchen
     track = await wavelink.Playable.search(query, source=wavelink.TrackSource.YOUTUBE)
 
     if not track:
@@ -78,8 +73,9 @@ async def play(interaction: discord.Interaction, query: str):
     await vc.play(track)
     await interaction.followup.send(f"🎶 Spiele: `{track.title}`")
 
+
 # --- /stop ---
-@bot.tree.command(name="stop", description="Stoppt die Wiedergabe")
+@bot.tree.command(name="stop", description="Stoppt die Wiedergabe", guild=GUILD_ID)
 async def stop(interaction: discord.Interaction):
     player: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
 
@@ -92,7 +88,7 @@ async def stop(interaction: discord.Interaction):
 
 
 # --- /skip ---
-@bot.tree.command(name="skip", description="Überspringt den aktuellen Song")
+@bot.tree.command(name="skip", description="Überspringt den aktuellen Song", guild=GUILD_ID)
 async def skip(interaction: discord.Interaction):
     player: wavelink.Player = wavelink.Pool.get_node().get_player(interaction.guild)
 
