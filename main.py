@@ -81,4 +81,5 @@ async def setup_hook():
     await bot.tree.sync(guild=GUILD_ID)
     print("✅ Slash-Commands synchronisiert")
 
+bot.setup_hook = setup_hook
 bot.run(TOKEN)
