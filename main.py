@@ -25,7 +25,7 @@ async def on_ready():
         client=bot,
         nodes=[
             wavelink.Node(
-                uri='http://localhost:2333',
+                uri='http://localhost:8081',
                 password='youshallnotpass'
             )
         ]
