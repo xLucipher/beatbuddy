@@ -47,42 +47,36 @@ async def on_ready():
 
 
 # --- /play ---
-@bot.tree.command(name="play", description="Spielt ein Lied von YouTube")
+@bot.tree.command(name="play", description="Spielt ein Lied von YouTube", guild=GUILD_ID)
 @app_commands.describe(query="Songtitel oder Link")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
+    # Prüfen, ob der Nutzer in einem Voice-Channel ist
     if not interaction.user.voice or not interaction.user.voice.channel:
-        await interaction.followup.send("❌ Du musst in einem Voice-Channel sein!")
+        await interaction.followup.send("❌ Du musst in einem Voice-Channel sein, um Musik abzuspielen.")
         return
 
-    vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+    # Prüfen, ob der Bot bereits verbunden ist
+    vc: wavelink.Player = wavelink.Player.connected(interaction.guild)
 
-    # Perform the search
-    tracks = await wavelink.Playable.search(query)
-
-    # Handle both SearchResult and raw list
-    if isinstance(tracks, list):
-        if not tracks:
-            await interaction.followup.send("❌ Kein Track gefunden.")
-            return
-        track = tracks[0]
+    if not vc:
+        vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
     else:
-        if not tracks.tracks:
-            await interaction.followup.send("❌ Kein Track gefunden.")
-            return
-        track = tracks.tracks[0]
+        # Falls der Bot verbunden ist, prüfen ob er im gleichen Channel ist
+        if vc.channel != interaction.user.voice.channel:
+            await vc.disconnect()
+            vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+
+    # Track suchen
+    track = await wavelink.Playable.search(query, source=wavelink.TrackSource.YOUTUBE)
+
+    if not track:
+        await interaction.followup.send("❌ Kein Track gefunden.")
+        return
 
     await vc.play(track)
-
-    embed = discord.Embed(
-        title="🎶 Now Playing",
-        description=f"[{track.title}]({track.uri})",
-        color=discord.Color.blurple()
-    )
-    embed.add_field(name="Dauer", value=f"{track.length // 60000}:{(track.length // 1000) % 60:02d}")
-    embed.set_footer(text=f"Angefordert von {interaction.user.display_name}")
-    await interaction.followup.send(embed=embed)
+    await interaction.followup.send(f"🎶 Spiele: `{track.title}`")
 
 # --- /stop ---
 @bot.tree.command(name="stop", description="Stoppt die Wiedergabe")
