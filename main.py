@@ -22,15 +22,14 @@ async def on_ready():
 
     # Lavalink Node verbinden
     await wavelink.Pool.connect(
-        client=bot,
-        nodes=[
-            wavelink.Node(
-                uri='http://localhost:8081',
-                password='youshallnotpass'
-            )
-        ]
-    )
-
+    client=bot,
+    nodes=[
+        wavelink.Node(
+            uri='http://127.0.0.1:8081',
+            password='youshallnotpass'
+        )
+    ]
+)
 
 @bot.tree.command(name="play", description="Spielt ein Lied von YouTube", guild=GUILD_ID)
 @app_commands.describe(query="Songtitel oder Link")
