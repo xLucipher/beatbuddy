@@ -11,30 +11,25 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-
 class BeatBuddy(commands.Bot):
     async def setup_hook(self):
-        try:
-            # Entferne alte globale Commands
-            global_cmds = await self.tree.fetch_commands()
-            for cmd in global_cmds:
-                await self.tree.remove_command(cmd.name)
+    try:
+        # ALLE globalen Befehle löschen
+        for cmd in await self.tree.fetch_commands():
+            await self.tree.remove_command(cmd.name)
+        
+        # ALLE Guild-Befehle löschen
+        for cmd in await self.tree.fetch_commands(guild=GUILD_ID):
+            await self.tree.remove_command(cmd.name, guild=GUILD_ID)
 
-            # Entferne alte Guild-Commands
-            guild_cmds = await self.tree.fetch_commands(guild=GUILD_ID)
-            for cmd in guild_cmds:
-                await self.tree.remove_command(cmd.name, guild=GUILD_ID)
+        print("🧹 Alle Slash-Commands entfernt")
+    except Exception as e:
+        print(f"⚠️ Fehler beim Entfernen: {e}")
 
-            print("🧹 Alte Commands entfernt")
-        except Exception as e:
-            print(f"⚠️ Fehler beim Entfernen: {e}")
-
-        # Registrieren
-        await self.tree.sync(guild=GUILD_ID)
-        print("✅ Slash-Commands synchronisiert")
+    await self.tree.sync(guild=GUILD_ID)
+    print("✅ Slash-Commands neu synchronisiert (guild-basiert)")
 
 bot = BeatBuddy(command_prefix="!", intents=intents)
-
 
 @bot.event
 async def on_ready():
