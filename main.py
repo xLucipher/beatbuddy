@@ -15,35 +15,34 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 # -- Slash-Commands registrieren (guild-basiert) --
-async def setup_hook():
+async def setup_hook(self):  # ← self muss rein
     try:
-        cmds = await bot.tree.fetch_commands(guild=GUILD_ID)
+        cmds = await self.tree.fetch_commands(guild=GUILD_ID)
         for cmd in cmds:
-            await bot.tree.remove_command(cmd.name, guild=GUILD_ID)
+            await self.tree.remove_command(cmd.name, guild=GUILD_ID)
         print("🧹 Alte Guild-Commands entfernt")
     except Exception as e:
         print(f"⚠️ Fehler beim Löschen der alten Guild-Commands: {e}")
 
-    await bot.tree.sync(guild=GUILD_ID)
+    await self.tree.sync(guild=GUILD_ID)
     print("✅ Slash-Commands synchronisiert (guild-basiert)")
 
 bot.setup_hook = setup_hook
-
 
 @bot.event
 async def on_ready():
     print(f"✅ Bot angemeldet als {bot.user}")
     await wavelink.Pool.connect(
         client=bot,
-        nodes=[
-            wavelink.Node(
-                uri='http://127.0.0.1:8081',
-                password='youshallnotpass'
-            )
-        ]
+        nodes=[wavelink.Node(uri='http://127.0.0.1:8081', password='youshallnotpass')]
     )
     print("🎵 Lavalink verbunden")
 
+    # Debug: Auflisten aller Slash-Commands
+    cmds = await bot.tree.fetch_commands(guild=GUILD_ID)
+    print("📋 Registrierte Slash-Commands:")
+    for cmd in cmds:
+        print(f" - {cmd.name}")
 
 # --- /play ---
 @bot.tree.command(name="play", description="Spielt ein Lied von YouTube", guild=GUILD_ID)
